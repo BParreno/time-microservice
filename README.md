@@ -51,3 +51,114 @@ Asegúrate de tener instalados los siguientes componentes:
 
   ```bash
   nest new time-microservice
+
+  Navega al directorio del proyecto:
+
+Bash
+
+cd time-microservice
+Instalar Dependencias del Proyecto:
+
+Bash
+
+npm install @nestjs/microservices
+Configurar src/main.ts:
+Abre el archivo src/main.ts y reemplaza su contenido con la configuración del servidor TCP:
+
+TypeScript
+
+// src/main.ts
+import { NestFactory } from '@nestjs/core';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+    transport: Transport.TCP,
+    options: {
+      host: '0.0.0.0',
+      port: 3001,
+    },
+  });
+  await app.listen();
+  console.log('Microservicio de la Hora escuchando en el puerto 3001');
+}
+bootstrap();
+Generar el Recurso time:
+En la terminal, ejecuta:
+
+Bash
+
+nest generate resource time
+Cuando te pregunte "¿What transport would you like to use?", selecciona "Microservice".
+Cuando te pregunte "¿Would you like to generate CRUD entry points?", selecciona "No".
+
+Modificar src/time/time.service.ts:
+Abre este archivo y añade la lógica para obtener la hora:
+
+TypeScript
+
+// src/time/time.service.ts
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class TimeService {
+  getCurrentTime(): string {
+    const now = new Date();
+    return now.toLocaleString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  }
+}
+Modificar src/time/time.controller.ts:
+Abre este archivo y define el patrón de mensaje get_time:
+
+TypeScript
+
+// src/time/time.controller.ts
+import { Controller } from '@nestjs/common';
+import { MessagePattern } from '@nestjs/microservices';
+import { TimeService } from './time.service';
+
+@Controller()
+export class TimeController {
+  constructor(private readonly timeService: TimeService) {}
+
+  @MessagePattern('get_time')
+  getTime(): string {
+    console.log('Comando "get_time" recibido. Enviando la hora actual...');
+    return this.timeService.getCurrentTime();
+  }
+}
+Verificar y Ajustar src/app.module.ts:
+Asegúrate de que src/app.module.ts importe TimeModule y no tenga controladores o proveedores innecesarios:
+
+TypeScript
+
+// src/app.module.ts
+import { Module } from '@nestjs/common';
+import { TimeModule } from './time/time.module';
+
+@Module({
+  imports: [TimeModule],
+  controllers: [],
+  providers: [],
+})
+export class AppModule {}
+Iniciar el Microservicio
+Una vez configurado todo lo anterior, para levantar el microservicio de la hora:
+
+Bash
+
+npm run start:dev
+Deberías ver un mensaje en tu consola indicando que el microservicio está escuchando en el puerto 3001. Deja esta terminal abierta.
+
+🧪 Cómo Probar el Funcionamiento
+Este microservicio se prueba enviándole un comando TCP desde un cliente. Para una prueba completa, necesitarás el client-microservice (descrito en su propio README).
+
+Una vez que el client-microservice esté configurado y corriendo, al ejecutarlo, verás en la consola de este time-microservice el mensaje:
+
+Comando "get_time" recibido. Enviando la hora actual...
